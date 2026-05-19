@@ -30,6 +30,9 @@ app.use(async (req, res) => {
   delete headers["content-length"];
   delete headers.origin;
   delete headers.referer;
+  // Force upstream to return uncompressed bytes so we don't have to deal with
+  // gzip/br body+header skew when piping back to the browser.
+  delete headers["accept-encoding"];
 
   try {
     const upstream = await fetch(target, {
