@@ -267,52 +267,58 @@ function App() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto space-y-6">
-          <div className="card bg-primary text-primary-content">
-            <div className="card-body">
-              <h2 className="card-title">{config.label || "Card"}</h2>
-              <p className="font-mono text-sm break-all">
-                {truncateAddress(config.destinationAddress)}
-              </p>
-              <div className="flex gap-2 mt-2">
-                <span className="badge badge-outline">
-                  {chainName(config.chainId)}
-                </span>
-                <span className="badge badge-outline">{config.currency}</span>
+          <div className="relative aspect-[1.586/1] w-full rounded-2xl bg-black text-white shadow-lg overflow-hidden">
+            <div className="absolute inset-0 p-6 flex flex-col justify-between">
+              <h2 className="text-2xl font-semibold tracking-tight">
+                {config.label || "Card"}
+              </h2>
+              <div className="flex items-end justify-between gap-3">
+                <div className="flex gap-2 flex-wrap">
+                  <span className="badge badge-outline border-white/40 text-white">
+                    {chainName(config.chainId)}
+                  </span>
+                  <span className="badge badge-outline border-white/40 text-white">
+                    {config.currency}
+                  </span>
+                </div>
+                <p className="font-mono text-sm text-white/80">
+                  {truncateAddress(config.destinationAddress)}
+                </p>
               </div>
             </div>
           </div>
 
           {(walletBalance !== undefined || isLoadingWallet || provider) && (
-            <div className="card bg-secondary text-secondary-content">
-              <div className="card-body">
-                <h2 className="card-title">Wallet Balance</h2>
-                {walletBalance === undefined ? (
-                  <p className="text-2xl font-bold">Loading…</p>
-                ) : walletUsdError ? (
-                  <>
-                    <p className="text-2xl font-bold text-error">
-                      Failed to load USD rate
-                    </p>
-                    <p className="text-sm opacity-80">
-                      {`${new Intl.NumberFormat().format(walletBalance)} sats`}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-2xl font-bold">
-                      {walletUsdValue !== undefined
-                        ? new Intl.NumberFormat(undefined, {
-                            style: "currency",
-                            currency: "USD",
-                          }).format(walletUsdValue)
-                        : "Loading…"}
-                    </p>
-                    <p className="text-sm opacity-80">
-                      {`${new Intl.NumberFormat().format(walletBalance)} sats`}
-                    </p>
-                  </>
-                )}
-              </div>
+            <div className="px-1">
+              <p className="text-sm font-medium text-base-content/60">
+                Wallet Balance
+              </p>
+              {walletBalance === undefined ? (
+                <p className="text-3xl font-bold">Loading…</p>
+              ) : walletUsdError ? (
+                <>
+                  <p className="text-3xl font-bold text-error">
+                    Failed to load USD rate
+                  </p>
+                  <p className="text-sm text-base-content/60">
+                    {`${new Intl.NumberFormat().format(walletBalance)} sats`}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-3xl font-bold">
+                    {walletUsdValue !== undefined
+                      ? new Intl.NumberFormat(undefined, {
+                          style: "currency",
+                          currency: "USD",
+                        }).format(walletUsdValue)
+                      : "Loading…"}
+                  </p>
+                  <p className="text-sm text-base-content/60">
+                    {`${new Intl.NumberFormat().format(walletBalance)} sats`}
+                  </p>
+                </>
+              )}
             </div>
           )}
 
