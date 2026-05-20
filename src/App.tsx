@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  connectNWC,
   disconnect,
   init,
   launchModal,
@@ -13,12 +14,14 @@ import PullToRefresh from "pulltorefreshjs";
 import type { SwapStatus } from "@lendasat/lendaswap-sdk-pure";
 import { HamburgerMenu } from "./components/HamburgerMenu";
 import { SetupForm } from "./components/SetupForm";
+import { matchCardBrand, NetworkMark } from "./cardBrands";
 import {
   clearCardConfig,
   loadCardConfig,
   saveCardConfig,
   type CardConfig,
 } from "./config";
+import { readHashBootstrap } from "./hashBootstrap";
 import {
   claimSwap,
   createTopupSwap,
@@ -32,6 +35,10 @@ const MIN_AMOUNT_USD = 2;
 init({
   appName: "Bitcoin Card Topup",
 });
+
+// Read once at module-load, before any analytics/logging could grab
+// document.URL. Strips the hash immediately — see hashBootstrap.ts.
+const initialBootstrap = readHashBootstrap();
 
 function truncateAddress(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
@@ -79,8 +86,8 @@ function statusLabel(status: SwapStatus | undefined): string {
 }
 
 function App() {
-  const [config, setConfig] = React.useState<CardConfig | null>(() =>
-    loadCardConfig(),
+  const [config, setConfig] = React.useState<CardConfig | null>(
+    () => initialBootstrap.config ?? loadCardConfig(),
   );
   const [editing, setEditing] = React.useState(false);
   const [provider, setProvider] = React.useState<WebLNProvider>();
@@ -98,6 +105,36 @@ function App() {
   const [successMessage, setSuccessMessage] = React.useState<string | null>(
     null,
   );
+
+  // Bootstrap from the URL hash if Alby Hub sent us here with a one-tap link.
+  // Persist the card config so future visits don't need the link, and connect
+  // the NWC wallet directly (skipping the bitcoin-connect modal).
+  React.useEffect(() => {
+    if (initialBootstrap.config) {
+      saveCardConfig(initialBootstrap.config);
+    }
+    if (initialBootstrap.nwcUri) {
+      // Wrapped — never surface the URI in error traces.
+      try {
+        connectNWC(initialBootstrap.nwcUri);
+      } catch {
+        /* swallow — never log the URI */
+      }
+      // Safety net: if the relay is unreachable or the URI is stale,
+      // bitcoin-connect dispatches onConnecting but never onConnected/
+      // onDisconnected, leaving the UI stuck on "Loading…". Reset the
+      // loading flag after a generous timeout so the user can retry.
+      const timeoutId = window.setTimeout(() => {
+        setLoadingWallet((current) => {
+          if (current) {
+            setError("Couldn't reach your wallet. Check the connection and try again.");
+          }
+          return false;
+        });
+      }, 15_000);
+      return () => window.clearTimeout(timeoutId);
+    }
+  }, []);
 
   React.useEffect(() => {
     const unsubConnected = onConnected(async (p) => {
@@ -267,26 +304,55 @@ function App() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto space-y-6">
-          <div className="relative aspect-[1.586/1] w-full rounded-2xl bg-black text-white shadow-lg overflow-hidden">
-            <div className="absolute inset-0 p-6 flex flex-col justify-between">
-              <h2 className="text-2xl font-semibold tracking-tight">
-                {config.label || "Card"}
-              </h2>
-              <div className="flex items-end justify-between gap-3">
-                <div className="flex gap-2 flex-wrap">
-                  <span className="badge badge-outline border-white/40 text-white">
-                    {chainName(config.chainId)}
-                  </span>
-                  <span className="badge badge-outline border-white/40 text-white">
-                    {config.currency}
-                  </span>
+          {(() => {
+            const brand = matchCardBrand(config.label);
+            const background = brand?.background ?? "bg-black";
+            const textClass = brand?.textClass ?? "text-white";
+            const Decoration = brand?.Decoration;
+            return (
+              <div
+                className={`relative aspect-[1.586/1] w-full rounded-2xl shadow-lg overflow-hidden ${background} ${textClass}`}
+              >
+                {Decoration && <Decoration />}
+                <div className="absolute inset-0 p-6 flex flex-col justify-between">
+                  <div className="flex items-start gap-3">
+                    {brand && <brand.Logo className="size-10 shrink-0" />}
+                    <div className="leading-tight">
+                      <h2 className="text-xl font-semibold tracking-tight">
+                        {config.label || "Card"}
+                      </h2>
+                      {brand && (
+                        <p className="text-xs tracking-widest opacity-80 mt-1">
+                          {brand.subtitle}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-end justify-between gap-3">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2 flex-wrap">
+                        <span className="badge badge-outline border-current/40">
+                          {chainName(config.chainId)}
+                        </span>
+                        <span className="badge badge-outline border-current/40">
+                          {config.currency}
+                        </span>
+                      </div>
+                      <p className="font-mono text-xs opacity-80">
+                        {truncateAddress(config.destinationAddress)}
+                      </p>
+                    </div>
+                    {brand && (
+                      <NetworkMark
+                        network={brand.network}
+                        className="text-lg"
+                      />
+                    )}
+                  </div>
                 </div>
-                <p className="font-mono text-sm text-white/80">
-                  {truncateAddress(config.destinationAddress)}
-                </p>
               </div>
-            </div>
-          </div>
+            );
+          })()}
 
           {(walletBalance !== undefined || isLoadingWallet || provider) && (
             <div className="px-1">
