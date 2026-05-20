@@ -2,7 +2,7 @@
 
 **Instantly top up any crypto debit card with one tap via the Bitcoin Lightning Network**
 
-> Experimental: Test only with small amounts.
+> Experimental: Test only with small amounts. I have only tested with USDC on ARBITRUM.
 
 A 1-click way to top up any on-chain crypto card with Lightning. Configure your card's deposit address once, connect an NWC wallet, and top up in one tap. Lightning sats are atomically swapped to USDC (or USDT) on Arbitrum, Polygon, or Ethereum via the [LendaSwap](https://lendaswap.com) API and delivered to your card's deposit address.
 
@@ -17,14 +17,3 @@ Save it as a PWA on your phone for fast access.
 
 If anything fails, the Lightning hold invoice expires and your sats are released automatically - no refund flow needed.
 
-## Configuration
-
-The LendaSwap API doesn't send CORS headers, so requests are temporarily routed through a tiny pass-through proxy at `https://lendaswap-proxy.fly.dev` (source in [`proxy/`](./proxy)). Override with `VITE_LENDASWAP_API_URL` to point at the API directly (e.g. for local API dev).
-
-### Deploying the proxy
-
-```sh
-cd proxy
-fly launch --no-deploy   # only first time; accept the existing fly.toml
-fly deploy
-```
